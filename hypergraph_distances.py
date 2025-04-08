@@ -259,8 +259,8 @@ def hyper_portrait_divergence(B1, B2):
     """""""""
 
     if isinstance(B1, xgi.Hypergraph):
-        B1 = edge_portrait(B1)
-        B2 = edge_portrait(B2)    
+        B1 = hyperedge_portrait(B1)
+        B2 = hyperedge_portrait(B2)    
         
     B1, B2 = pad_h_portraits(B1,B2)
     P1 = np.ravel(B1)
