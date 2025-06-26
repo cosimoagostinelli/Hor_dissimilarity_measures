@@ -12,7 +12,7 @@ Code to reproduce the results presented in the paper "Higher-order dissimilarity
 
 
 
-If you use this code, please cite the following paper: https://arxiv.org/abs/2503.16959
+If you use this code, please cite the paper: https://arxiv.org/abs/2503.16959
 
 
 
