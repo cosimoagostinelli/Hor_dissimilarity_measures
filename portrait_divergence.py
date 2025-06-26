@@ -4,6 +4,7 @@
 import numpy as np
 import networkx as nx
 from scipy.stats import entropy
+from collections import Counter
 
 
 
@@ -90,6 +91,7 @@ def pad_portraits_to_same_size(B1,B2):
     return BigB1, BigB2
 
 
+
 def _graph_or_portrait(X):
     """Check if X is a nx (di)graph. If it is, get its portrait. Otherwise
     assume it's a portrait and just return it.
@@ -97,6 +99,7 @@ def _graph_or_portrait(X):
     if isinstance(X, (nx.Graph, nx.DiGraph)):
         return portrait(X)
     return X
+
 
 
 def portrait_divergence(G, H):
@@ -123,3 +126,95 @@ def portrait_divergence(G, H):
     JSDpq = 0.5*(KLDpm + KLDqm)
     
     return JSDpq
+
+
+
+
+
+
+def weighted_portrait(G, paths, binedges):
+    """Compute weighted portrait of G, using Dijkstra's algorithm for finding
+    shortest paths. G is a networkx object.
+    
+    Return matrix B where B[i,j] is the number of starting nodes in graph with
+    j nodes at distance d_i <  d < d_{i+1}.
+    """
+    
+    sampled_path_lengths = binedges
+    UPL = np.array(sampled_path_lengths)
+    
+    l_s_v = []
+    for i,(s,dist_dict) in enumerate(paths):
+        distances = np.array(list(dist_dict.values()))
+        s_v,e = np.histogram(distances, bins=UPL)
+        l_s_v.append(s_v)
+    M = np.array(l_s_v)
+    
+    B = np.zeros((len(UPL)-1, G.number_of_nodes()+1))
+    for i in range(len(UPL)-1):
+        col = M[:,i] # ith col = numbers of nodes at d_i <= distance < d_i+1
+        for n,c in Counter(col).items():
+            B[i,n] += c
+    
+    return B
+
+
+
+def _get_unique_path_lengths(G, paths):
+
+    unique_path_lengths = set()
+    for starting_node,dist_dict in paths:
+        unique_path_lengths |= set(dist_dict.values())
+    unique_path_lengths = sorted(list(unique_path_lengths))
+    return unique_path_lengths
+
+
+
+def portrait_divergence_weighted(G,H, paths_G=None, paths_H=None, bins=None, binedges=None):
+    """Network portrait divergence between two weighted graphs.
+    
+    bins = width of bins in percentiles
+    binedges = vector of bin edges
+    bins and binedges are mutually exclusive
+    """
+    if paths_G is None and paths_H is None:
+        # get joint binning:
+        paths_G = list(nx.all_pairs_dijkstra_path_length(G, weight=inverse_weight))
+        paths_H = list(nx.all_pairs_dijkstra_path_length(H, weight=inverse_weight))
+    
+    # get bin_edges in common for G and H:
+    if binedges is None:
+        if bins is None:
+            bins = 1
+        UPL_G = set(_get_unique_path_lengths(G, paths_G))
+        UPL_H = set(_get_unique_path_lengths(H, paths_H))
+        unique_path_lengths = sorted(list(UPL_G | UPL_H))
+        binedges = np.percentile(unique_path_lengths, np.arange(0, 101, bins))
+    
+    # get weighted portraits:
+    BG = weighted_portrait(G, paths=paths_G, binedges=binedges)
+    BH = weighted_portrait(H, paths=paths_H, binedges=binedges)
+    
+    return portrait_divergence(BG, BH)
+
+
+
+
+def weighted_shortest_paths(G):
+    """
+    Computes all the shortest paths lenght in the weighted network
+    G, through the Dijkstra algorithm, returning a list.
+    The length of a path is computed as the sum of the inverse weights 
+    of all the edges traversed in the path.
+    """
+    
+    return list(nx.all_pairs_dijkstra_path_length(G, weight=inverse_weight))
+
+
+def inverse_weight(i, j, attr):
+    """
+    Auxiliary function for the Dijkstra algorithm.
+    Returns the inverse of the weight of edge (i,j).
+    """
+    
+    return (1. / attr['weight'])

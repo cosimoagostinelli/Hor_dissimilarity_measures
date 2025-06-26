@@ -34,9 +34,7 @@ def stratified_er_hypergraph (N, ps, p_type='prob', seed=None):
         H_s = xgi.uniform_erdos_renyi_hypergraph(N, s+2, ps[s], p_type=p_type, seed=seed)
         edges = H_s.edges.members()
         H.add_edges_from(edges)
-        
-    H.cleanup()
-    
+            
     return(H)
 
 
@@ -73,6 +71,7 @@ def powerlaw_degree_distribution(N, gamma, seed, cutoff=np.inf):
         if k_ <1:
             k_=1 
         ks.append( int(np.round(k_)) )
+        
     return sorted(ks)
     
 

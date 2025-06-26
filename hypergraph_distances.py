@@ -14,14 +14,13 @@ def feature_vec (H):
     
     """""""""
     Feature vector related to the given hypergraph. This vector is a list of
-    45 values corrsponding to median, mean, standard deviation, skewness and
-    kurtosis of 9 distributions. Each of them is a distribution of local structural
+    21 values corrsponding to median, mean, and standard deviation of 7 
+    distributions. Each of them is a distribution of local structural
     features over all the nodes 'i' in H. The selected features are: number of i's  
-    neighbors; i's hyperdegree; i's hyper clustering coefficient; average size of
-    hyperedges involving i; std of sizes of hyperedges involving i; average number
-    of neighbors' of i's neighbors; average hyperdegree of i's neighbors; average
-    hyper clustering coefficient of i's neighbors; number of neighbors of i's 
-    egonet (i.e., number of nodes at distance 2 from i).
+    neighbors; i's hyperdegree; average size of hyperedges involving i;
+    std of sizes of hyperedges involving i; average number of neighbors' of
+    i's neighbors;  average hyperdegree of i's neighbors; number of neighbors 
+    of i's egonet (i.e., number of nodes at distance 2 from i).
 
     Parameters:
     -----------
@@ -41,8 +40,8 @@ def feature_vec (H):
     pd2_hdeg = list(deg_dict.values())
     
     # 3 - list of hyper clustering coefficient of each node
-    clst_dict = xgi.local_clustering_coefficient(H)
-    pd3_hclst = list(clst_dict.values())
+    #clst_dict = xgi.local_clustering_coefficient(H)
+    #pd3_hclst = list(clst_dict.values())
     
     # 4 - list of average size of nodes' hyperedges
     pd4_avg_hsize = []
@@ -57,7 +56,7 @@ def feature_vec (H):
     pd7_neig_hdeg = H.nodes.average_neighbor_degree.aslist()
 
     # 8 - list of average neighbors' hyper clustering coefficient
-    pd8_neig_hclst = []
+    #pd8_neig_hclst = []
 
     # 9 - list of number of neighbors of a node's egonet
     pd9_ego_neig = []
@@ -73,7 +72,7 @@ def feature_vec (H):
             pd4_avg_hsize.append(0.)
             pd5_std_hsize.append(0.)
             pd6_neig_nneig.append(0.)
-            pd8_neig_hclst.append(0.)
+            #pd8_neig_hclst.append(0.)
             pd9_ego_neig.append(0.)
         else:
             edge_neig_i = xgi.edge_neighborhood(H, i, include_self=True)
@@ -84,8 +83,8 @@ def feature_vec (H):
             neig_nneig_i = [len(H.nodes.neighbors(j)) for j in neig_i]
             pd6_neig_nneig.append( np.mean(neig_nneig_i) )
             
-            neig_clst = [clst_dict[j] for j in neig_i]
-            pd8_neig_hclst.append( np.mean( neig_clst ) )
+            #neig_clst = [clst_dict[j] for j in neig_i]
+            #pd8_neig_hclst.append( np.mean( neig_clst ) )
 
             neig_neig_i = set()
             for j in neig_i:
@@ -95,8 +94,10 @@ def feature_vec (H):
             pd9_ego_neig.append(len(neig_neig_i-neig_i)-1)
         
 
-    features_distr_list = [pd1_nneig, pd2_hdeg, pd3_hclst, pd4_avg_hsize, pd5_std_hsize,
-                           pd6_neig_nneig, pd7_neig_hdeg, pd8_neig_hclst, pd9_ego_neig]
+    features_distr_list = [pd1_nneig, pd2_hdeg, #pd3_hclst, 
+                           pd4_avg_hsize, pd5_std_hsize,
+                           pd6_neig_nneig, pd7_neig_hdeg, #pd8_neig_hclst, 
+                           pd9_ego_neig]
     hgraph_fvec = []
 
     for f_distr in features_distr_list:
@@ -104,8 +105,9 @@ def feature_vec (H):
         hgraph_fvec += [np.median(f_distr),
                      np.mean(f_distr),
                      np.std(f_distr),
-                     skew(f_distr, bias=False),
-                     kurtosis(f_distr, bias=False) ]
+                     #skew(f_distr),
+                     #kurtosis(f_distr, fisher=False)
+                       ]
         
     return (hgraph_fvec)
 
@@ -176,17 +178,26 @@ def hyperedge_portrait(H):
     s_max = np.max( xgi.unique_edge_sizes(H) )
     # connected components
     CC = [G.subgraph(c).copy() for c in nx.connected_components(G)]
-    dia = np.max( [nx.diameter(g) for g in CC] )
+
+    # compute all shortest paths and get diameter to inizialize B
+    dist_dict = dict()
+    lengths = set()
+    for Gc in CC:
+        for i in Gc.nodes:
+            dist_dict[i] = nx.shortest_path_length(Gc, i)
+            lengths |= set( dist_dict[i].values() )
+
+    dia = max(lengths)
     B = np.zeros((s_max-1, s_max-1, dia+1, N), dtype=int) 
     
     for Gc in CC:
         for i in Gc.nodes:
             m = sizes_dict[i]-2
-            dist_dict = nx.shortest_path_length(Gc, i)
+            dd_i = dist_dict[i]
             counter = np.zeros((s_max-1, dia+1), dtype=int)
 
             for j in Gc.nodes:
-                counter[sizes_dict[j]-2][dist_dict[j]] += 1
+                counter[sizes_dict[j]-2][dd_i[j]] += 1
 
             for n in range(s_max-1):
                 for l in range(dia+1):

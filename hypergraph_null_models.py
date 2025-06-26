@@ -107,7 +107,7 @@ def project_hedges (H_orig, f, seed=None):
     H.remove_edges_from(id_to_remove)
     H.add_edges_from(list(to_add))
     # avoid multiedges 
-    H.cleanup(isolates=True, singletons=True, connected=False, relabel=False)
+    H.cleanup(isolates=True, singletons=True, connected=False)
                  
     return H       
 
@@ -275,3 +275,36 @@ def configuration_model_hypergraph (H, n_shuff=1e4, n_min_he=4, f_max_he=0.9, se
     Hn = xgi.Hypergraph(hedges)
     
     return Hn
+
+
+
+
+def weighted_projection(H):
+    """
+    Returns the weighted undirected pairwise graph G resulting
+    from the projection of an unweighted and undirected hypergraph H.
+    The weight of the edge (i,j) in G is equal to the number of
+    hyperedges connecting i and j in H.
+
+    Parameters:
+    -------------
+    H (xgi.Hypergraph):  the input hypergraph.
+    -------------
+
+    Returns:
+        G (networkx.Graph): the weighted projection of H.
+        The weights are stored as attribute of the edges in
+        the EdgeDataView.
+    """
+    G = xgi.to_graph(H)
+    # dictionary of weights keyed by edges
+    weights = {tuple(sorted(e)): 0 for e in G.edges}
+    
+    for e in H.edges.members():
+        for pair in combinations(e, 2):
+            weights[tuple(sorted(pair))] += 1
+
+    for ns,w in weights.items():
+        G[ns[0]][ns[1]]['weight'] = w
+
+    return G
